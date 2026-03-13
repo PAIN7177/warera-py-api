@@ -22,7 +22,6 @@ from tenacity import (
     retry_if_exception,
     stop_after_attempt,
     wait_exponential,
-    wait_fixed,
 )
 
 from .exceptions import (
@@ -68,7 +67,7 @@ class HttpSession:
     # Lifecycle
     # ------------------------------------------------------------------
 
-    async def __aenter__(self) -> "HttpSession":
+    async def __aenter__(self) -> HttpSession:
         await self._ensure_client()
         return self
 
@@ -162,9 +161,7 @@ class HttpSession:
         wait=wait_exponential(multiplier=0.5, min=0.5, max=10),
         reraise=True,
     )
-    async def _post_batch_with_retry(
-        self, url: str, body: dict[str, Any]
-    ) -> list[dict[str, Any]]:
+    async def _post_batch_with_retry(self, url: str, body: dict[str, Any]) -> list[dict[str, Any]]:
         assert self._client is not None
         headers = {**self._auth_headers(), "Content-Type": "application/json"}
         resp = await self._client.post(url, json=body, headers=headers)
@@ -172,7 +169,7 @@ class HttpSession:
         data = resp.json()
         if not isinstance(data, list):
             raise ValueError(f"Expected list from batch endpoint, got {type(data).__name__}")
-        return data  # type: ignore[return-value]
+        return data
 
     # ------------------------------------------------------------------
     # Response parsing helpers
@@ -203,21 +200,17 @@ class HttpSession:
 
         if "error" in data:
             err = data["error"]
-            msg = err.get("message", "Unknown tRPC error")
+            _msg = err.get("message", "Unknown tRPC error")
             code = err.get("data", {}).get("httpStatus", 500)
             _raise_for_status(code, err)
 
         try:
             return data["result"]["data"]
         except (KeyError, TypeError) as exc:
-            raise ValueError(
-                f"Unexpected tRPC response shape from {procedure}: {data}"
-            ) from exc
+            raise ValueError(f"Unexpected tRPC response shape from {procedure}: {data}") from exc
 
     @staticmethod
-    def _unwrap_batch(
-        raw_list: list[dict[str, Any]], procedures: list[str]
-    ) -> list[Any]:
+    def _unwrap_batch(raw_list: list[dict[str, Any]], procedures: list[str]) -> list[Any]:
         """
         tRPC batch response shape:
           [
@@ -229,15 +222,15 @@ class HttpSession:
         Returns a list of unwrapped data values.
         Raises WareraBatchError if any item errored.
         """
-        from .exceptions import WareraBatchError, WareraHTTPError
+        from .exceptions import WareraBatchError, WareraError, WareraHTTPError
 
         results: dict[int, Any] = {}
-        errors: dict[int, WareraHTTPError] = {}
+        errors: dict[int, WareraError] = {}
 
-        for i, (item, proc) in enumerate(zip(raw_list, procedures)):
+        for i, (item, proc) in enumerate(zip(raw_list, procedures, strict=True)):
             if "error" in item:
                 err = item["error"]
-                msg = err.get("message", "Unknown error")
+                _msg = err.get("message", "Unknown error")
                 code = err.get("data", {}).get("httpStatus", 500)
                 try:
                     _raise_for_status(code, err)
@@ -246,9 +239,10 @@ class HttpSession:
             else:
                 try:
                     results[i] = item["result"]["data"]
-                except (KeyError, TypeError) as exc:
+                except (KeyError, TypeError):
                     from .exceptions import WareraValidationError
-                    errors[i] = WareraValidationError(  # type: ignore[assignment]
+
+                    errors[i] = WareraValidationError(
                         f"Bad shape at batch index {i} ({proc}): {item}", item
                     )
 

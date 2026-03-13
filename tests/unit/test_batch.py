@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from warera._batch import BatchSession, fetch_many_by_ids
 from warera.exceptions import WareraBatchError, WareraNotFoundError
 
-
 # ---------------------------------------------------------------------------
 # BatchSession
 # ---------------------------------------------------------------------------
+
 
 def _make_http(return_values: list) -> MagicMock:
     http = MagicMock()
@@ -40,7 +39,7 @@ async def test_batch_session_passes_correct_args_to_http():
     http = _make_http([{}, {}])
 
     async with BatchSession(http) as batch:
-        batch.add("company.getById",        {"companyId": "111"})
+        batch.add("company.getById", {"companyId": "111"})
         batch.add("government.getByCountryId", {"countryId": "7"})
 
     http.post_batch.assert_called_once_with(
@@ -53,7 +52,7 @@ async def test_batch_session_passes_correct_args_to_http():
 async def test_batch_session_empty_does_not_call_http():
     http = _make_http([])
 
-    async with BatchSession(http) as batch:
+    async with BatchSession(http) as _batch:
         pass  # nothing added
 
     http.post_batch.assert_not_called()
@@ -64,10 +63,12 @@ async def test_batch_session_splits_into_chunks():
     """When queue exceeds batch_size, multiple POST calls are made."""
     # 3 items with batch_size=2 → 2 POST requests
     http = MagicMock()
-    http.post_batch = AsyncMock(side_effect=[
-        [{"id": "1"}, {"id": "2"}],
-        [{"id": "3"}],
-    ])
+    http.post_batch = AsyncMock(
+        side_effect=[
+            [{"id": "1"}, {"id": "2"}],
+            [{"id": "3"}],
+        ]
+    )
 
     async with BatchSession(http, batch_size=2) as batch:
         a = batch.add("company.getById", {"companyId": "1"})
@@ -93,7 +94,6 @@ async def test_batch_session_item_not_resolved_before_flush():
 @pytest.mark.asyncio
 async def test_batch_session_partial_failure():
     """Items that succeed should resolve; failed items should raise on .result."""
-    from warera.exceptions import WareraBatchError, WareraNotFoundError
 
     http = MagicMock()
     http.post_batch = AsyncMock(
@@ -105,7 +105,7 @@ async def test_batch_session_partial_failure():
 
     async with BatchSession(http) as batch:
         good = batch.add("company.getById", {"companyId": "1"})
-        bad  = batch.add("company.getById", {"companyId": "missing"})
+        bad = batch.add("company.getById", {"companyId": "missing"})
 
     assert good.result == {"id": "1"}
     assert bad.ok is False
@@ -116,6 +116,7 @@ async def test_batch_session_partial_failure():
 # ---------------------------------------------------------------------------
 # fetch_many_by_ids
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_fetch_many_by_ids_single_chunk():
@@ -135,10 +136,12 @@ async def test_fetch_many_by_ids_single_chunk():
 async def test_fetch_many_by_ids_multiple_chunks():
     """IDs exceeding batch_size must be split into concurrent requests."""
     http = MagicMock()
-    http.post_batch = AsyncMock(side_effect=[
-        [{"id": "1"}, {"id": "2"}],
-        [{"id": "3"}],
-    ])
+    http.post_batch = AsyncMock(
+        side_effect=[
+            [{"id": "1"}, {"id": "2"}],
+            [{"id": "3"}],
+        ]
+    )
 
     results = await fetch_many_by_ids(
         http, "company.getById", "companyId", ["1", "2", "3"], batch_size=2

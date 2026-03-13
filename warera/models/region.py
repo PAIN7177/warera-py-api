@@ -1,4 +1,7 @@
 from __future__ import annotations
+
+from typing import Any
+
 from .common import WareraModel
 
 
@@ -12,4 +15,4 @@ class Region(WareraModel):
     defense_system: int | None = None
     is_capital: bool | None = None
     resources: list[str] = []
-    coordinates: dict | None = None
+    coordinates: dict[str, Any] | None = None

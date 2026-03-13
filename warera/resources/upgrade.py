@@ -1,7 +1,8 @@
 from __future__ import annotations
+
 from .._enums import UpgradeType
-from ..models.upgrade import Upgrade
 from ..exceptions import WareraError
+from ..models.upgrade import Upgrade
 from ._base import BaseResource
 
 
@@ -36,9 +37,7 @@ class UpgradeResource(BaseResource):
         """
         provided = sum(x is not None for x in (region_id, company_id, mu_id))
         if provided == 0:
-            raise WareraError(
-                "upgrade.get requires exactly one of: region_id, company_id, mu_id"
-            )
+            raise WareraError("upgrade.get requires exactly one of: region_id, company_id, mu_id")
 
         raw = await self._get(
             "upgrade.getUpgradeByTypeAndEntity",

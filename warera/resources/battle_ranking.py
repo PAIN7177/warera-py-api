@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from .._enums import BattleRankingDataType, BattleRankingEntityType, BattleRankingSide
 from ..models.battle_ranking import BattleRankingEntry
 from ._base import BaseResource
@@ -42,6 +43,9 @@ class BattleRankingResource(BaseResource):
         )
         if isinstance(raw, list):
             return [BattleRankingEntry.model_validate(r) for r in raw]
-        # Some responses wrap in an items key
-        items = raw.get("items", raw.get("data", [])) if isinstance(raw, dict) else []
+        if isinstance(raw, dict):
+            raw_items = raw.get("items", raw.get("data", []))
+            items = raw_items if isinstance(raw_items, list) else []
+        else:
+            items = []
         return [BattleRankingEntry.model_validate(r) for r in items]

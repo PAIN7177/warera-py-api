@@ -1,7 +1,10 @@
 from __future__ import annotations
+
+from collections.abc import AsyncIterator
 from typing import Any
+
 from .._enums import TransactionType
-from .._pagination import paginate, collect_all
+from .._pagination import collect_all, paginate
 from ..models.common import CursorPage
 from ..models.transaction import Transaction
 from ._base import BaseResource
@@ -44,7 +47,7 @@ class TransactionResource(BaseResource):
         )
         return CursorPage.from_raw(raw, Transaction)
 
-    async def paginate(self, **kwargs: Any):
+    async def paginate(self, **kwargs: Any) -> AsyncIterator[Transaction]:
         """Async generator over all transactions matching the given filters."""
         async for item in paginate(self.get_paginated, **kwargs):
             yield item

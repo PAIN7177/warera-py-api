@@ -1,7 +1,10 @@
 from __future__ import annotations
+
+from collections.abc import AsyncIterator
 from typing import Any
+
 from .._enums import EventType
-from .._pagination import paginate, collect_all
+from .._pagination import collect_all, paginate
 from ..models.common import CursorPage
 from ..models.event import Event
 from ._base import BaseResource
@@ -31,7 +34,7 @@ class EventResource(BaseResource):
         )
         return CursorPage.from_raw(raw, Event)
 
-    async def paginate(self, **kwargs: Any):
+    async def paginate(self, **kwargs: Any) -> AsyncIterator[Event]:
         """Async generator over all events matching the given filters."""
         async for item in paginate(self.get_paginated, **kwargs):
             yield item
