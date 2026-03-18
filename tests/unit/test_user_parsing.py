@@ -1,5 +1,7 @@
 import json
+
 from warera.models.user import User
+
 
 def test_user_parsing_from_sample():
     sample_json = """
