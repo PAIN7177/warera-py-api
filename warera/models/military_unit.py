@@ -8,7 +8,7 @@ class MilitaryUnit(WareraModel):
     name: str | None = None
     country_id: str | None = None
     owner_id: str | None = None
-    members: int | None = None
+    members: list[str] | None = None  # API returns a list of member user ID strings
     damage: float | None = None
     terrain: float | None = None
     wealth: float | None = None
