@@ -117,7 +117,12 @@ await client.company.get_many(company_ids: list[str], batch_size=50) -> list[Com
 await client.country.get(country_id: str) -> Country
 await client.country.get_all() -> dict[str, Country]
 await client.country.find_by_name(name: str) -> Country | None
+client.country.invalidate_cache()           # force a fresh fetch on next find_by_name call
 ```
+
+`find_by_name` caches the full country list for 10 minutes per client instance so
+repeated calls do not each trigger an API round-trip. Call `invalidate_cache()` to
+bypass the cache immediately.
 
 ### `client.government`
 
@@ -337,6 +342,10 @@ users     = await client.user.get_many(user_ids)          # list[User]
 regions   = await client.region.get_many(region_ids)      # list[Region]
 ```
 
+Partial failures are handled gracefully — if the server returns a 404 for individual
+IDs within a batch, those entries are returned as `None` rather than raising and
+dropping the entire chunk. Filter with `[u for u in users if u is not None]`.
+
 ### Partial failure handling
 
 ```python
@@ -371,6 +380,7 @@ from warera.exceptions import (
     WareraForbiddenError,    # 403
     WareraNotFoundError,     # 404
     WareraRateLimitError,    # 429 — auto-retried; raised after all retries exhausted
+                             #   .retry_after  → float | None  (seconds from Retry-After header)
     WareraServerError,       # 5xx — auto-retried
     WareraValidationError,   # Pydantic parse failure
     WareraBatchError,        # one or more batch items failed
@@ -382,8 +392,8 @@ try:
     user = await client.user.get_lite("99999")
 except WareraNotFoundError:
     print("User not found")
-except WareraRateLimitError:
-    print("Still hitting rate limits after 3 retries")
+except WareraRateLimitError as e:
+    print(f"Still rate-limited after retries. Retry after: {e.retry_after}s")
 except WareraError as e:
     print(f"API error: {e}")
 ```
@@ -397,11 +407,15 @@ WareraClient(
     api_key: str | None = None,       # also reads WARERA_API_KEY env var
     base_url: str = "https://api2.warera.io/trpc",
     timeout: float = 10.0,            # seconds
-    max_retries: int = 3,
-    retry_backoff_factor: float = 0.5,
+    max_retries: int = 3,             # retry attempts for 429 / 5xx errors
+    retry_backoff_factor: float = 0.5,# exponential backoff multiplier between retries
     batch_size: int = 50,             # default max procedures per batch POST
 )
 ```
+
+All parameters are applied at runtime. `max_retries` and `retry_backoff_factor` directly
+control the tenacity retry policy — increasing `max_retries` will produce that many actual
+retry attempts before raising.
 
 ---
 
