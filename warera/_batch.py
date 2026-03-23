@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, cast
 
 from .exceptions import WareraBatchError, WareraError
 
@@ -205,7 +205,7 @@ async def fetch_many_by_ids(
         procedures = [procedure] * len(chunk)
         inputs = [{id_param: id_} for id_ in chunk]
         try:
-            return await http.post_batch(procedures, inputs)
+            return cast(list[Any], await http.post_batch(procedures, inputs))
         except WareraBatchError as exc:
             # Partial failure — return None for failed indices so callers
             # can filter them out without losing the rest of the chunk.
