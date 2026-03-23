@@ -28,7 +28,7 @@ class Battle(WareraModel):
     )
     start_time: str | None = None
     end_time: str | None = None
-    current_round: int | dict[str, Any] | None = None
+    current_round: str | int | dict[str, Any] | None = None  # API returns a round ID string, an int, or an object
     total_rounds: int | None = None
     battle_type: str | None = None
 

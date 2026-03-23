@@ -153,6 +153,10 @@ await client.battle.paginate(**kwargs)   # async generator
 
 Enums: `BattleFilter.ALL / YOUR_COUNTRY / YOUR_ENEMIES`, `BattleDirection.FORWARD / BACKWARD`
 
+`Battle.current_round` is `str | int | dict[str, Any] | None` — the API returns a plain
+round ID string (e.g. `"69be5841ee1366a85052a171"`) for active battles, an integer
+for some contexts, or a nested object.
+
 ### `client.battle_ranking`
 
 ```python
@@ -224,6 +228,9 @@ await client.mu.paginate(**kwargs)    # async generator
 await client.mu.collect_all(**kwargs) -> list[MilitaryUnit]
 await client.mu.get_many(mu_ids: list[str], batch_size=50) -> list[MilitaryUnit]
 ```
+
+`MilitaryUnit.members` is `list[str] | None` — the API returns a list of member user ID
+strings, not a count integer.
 
 ### `client.ranking`
 
